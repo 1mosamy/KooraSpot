@@ -1,0 +1,6 @@
+@KooraSpot_HostAddress = http://localhost:5056
+
+GET {{KooraSpot_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
