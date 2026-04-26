@@ -1,6 +1,6 @@
 # ⚽ KooraSpot - Sports Field Booking App
 
-KooraSpot is a mobile application that allows users to discover, book, and manage sports fields بسهولة وسرعة.
+KooraSpot is a mobile application that allows users to discover, book, and manage sports fields.
 
 ---
 
