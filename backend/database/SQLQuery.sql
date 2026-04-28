@@ -1,13 +1,13 @@
 USE KooraSpotDb;
 GO
-
 CREATE TABLE Users (
     Id INT IDENTITY(1,1) PRIMARY KEY,
     FullName NVARCHAR(100) NOT NULL,
-    PhoneNumber NVARCHAR(20) NULL UNIQUE,
+    PhoneNumber NVARCHAR(20) NULL,
     Email NVARCHAR(100) NOT NULL UNIQUE,
     PasswordHash NVARCHAR(MAX) NOT NULL,
-    Role NVARCHAR(20) NOT NULL, -- Player / Owner
+    Role NVARCHAR(20) NOT NULL, 
+    City NVARCHAR(100) NULL, 
     ProfileImageUrl NVARCHAR(MAX) NULL,
     CreatedAt DATETIME2 DEFAULT GETDATE()
 );
@@ -76,3 +76,4 @@ CREATE TABLE Payments (
     CONSTRAINT FK_Payments_Bookings
         FOREIGN KEY (BookingId) REFERENCES Bookings(Id)
 );
+
