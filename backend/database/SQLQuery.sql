@@ -1,14 +1,14 @@
 USE KooraSpotDb;
 GO
 
-
 CREATE TABLE Users (
     Id INT IDENTITY(1,1) PRIMARY KEY,
     FullName NVARCHAR(100) NOT NULL,
-    PhoneNumber NVARCHAR(20) NOT NULL UNIQUE,
-    Email NVARCHAR(100) NULL UNIQUE,
+    PhoneNumber NVARCHAR(20) NULL UNIQUE,
+    Email NVARCHAR(100) NOT NULL UNIQUE,
     PasswordHash NVARCHAR(MAX) NOT NULL,
-    Role NVARCHAR(20) NOT NULL, -- Player / Owner 
+    Role NVARCHAR(20) NOT NULL, -- Player / Owner
+    ProfileImageUrl NVARCHAR(MAX) NULL,
     CreatedAt DATETIME2 DEFAULT GETDATE()
 );
 
@@ -40,8 +40,7 @@ CREATE TABLE FieldImages (
 CREATE TABLE TimeSlots (
     Id INT IDENTITY(1,1) PRIMARY KEY,
     FieldId INT NOT NULL,
-    StartTime TIME NOT NULL,
-    EndTime TIME NOT NULL,
+    SlotTime NVARCHAR(20) NOT NULL,
     IsActive BIT DEFAULT 1,
 
     CONSTRAINT FK_TimeSlots_Fields
@@ -53,8 +52,8 @@ CREATE TABLE Bookings (
     PlayerId INT NOT NULL,
     FieldId INT NOT NULL,
     BookingDate DATE NOT NULL,
-    StartTime TIME NOT NULL,
-    EndTime TIME NOT NULL,
+    DayName NVARCHAR(20) NOT NULL, 
+    SlotTime NVARCHAR(20) NOT NULL, 
     TotalPrice DECIMAL(10,2) NOT NULL,
     Status NVARCHAR(30) DEFAULT 'Pending',
     CreatedAt DATETIME2 DEFAULT GETDATE(),
@@ -76,23 +75,4 @@ CREATE TABLE Payments (
 
     CONSTRAINT FK_Payments_Bookings
         FOREIGN KEY (BookingId) REFERENCES Bookings(Id)
-);
-
-
-CREATE TABLE Reviews (
-    Id INT IDENTITY(1,1) PRIMARY KEY,
-    PlayerId INT NOT NULL,
-    FieldId INT NOT NULL,
-    Rating INT NOT NULL,
-    Comment NVARCHAR(MAX) NULL,
-    CreatedAt DATETIME2 DEFAULT GETDATE(),
-
-    CONSTRAINT FK_Reviews_Users
-        FOREIGN KEY (PlayerId) REFERENCES Users(Id),
-
-    CONSTRAINT FK_Reviews_Fields
-        FOREIGN KEY (FieldId) REFERENCES Fields(Id),
-
-    CONSTRAINT CK_Reviews_Rating
-        CHECK (Rating BETWEEN 1 AND 5)
 );
