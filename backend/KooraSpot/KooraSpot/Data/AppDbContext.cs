@@ -13,11 +13,11 @@ namespace KooraSpot.Data
         }
 
         public DbSet<User> Users { get; set; }
-        public DbSet<Field> Fields { get; set; }
-        public DbSet<FieldImage> FieldImages { get; set; }
-        public DbSet<TimeSlot> TimeSlots { get; set; }
-        public DbSet<Booking> Bookings { get; set; }
-        public DbSet<Payment> Payments { get; set; }
-        public DbSet<Review> Reviews { get; set; }
+        //public DbSet<Field> Fields { get; set; }
+        //public DbSet<FieldImage> FieldImages { get; set; }
+        //public DbSet<TimeSlot> TimeSlots { get; set; }
+        //public DbSet<Booking> Bookings { get; set; }
+        //public DbSet<Payment> Payments { get; set; }
+      
     }
 }
