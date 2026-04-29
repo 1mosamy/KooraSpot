@@ -64,7 +64,21 @@ CREATE TABLE Bookings (
     CONSTRAINT FK_Bookings_Fields
         FOREIGN KEY (FieldId) REFERENCES Fields(Id)
 );
+CREATE TABLE FavoriteFields (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    UserId INT NOT NULL,
+    FieldId INT NOT NULL,
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
 
+    CONSTRAINT FK_FavoriteFields_Users
+        FOREIGN KEY (UserId) REFERENCES Users(Id),
+
+    CONSTRAINT FK_FavoriteFields_Fields
+        FOREIGN KEY (FieldId) REFERENCES Fields(Id),
+
+    CONSTRAINT UQ_FavoriteFields_User_Field
+        UNIQUE (UserId, FieldId)
+);
 CREATE TABLE Payments (
     Id INT IDENTITY(1,1) PRIMARY KEY,
     BookingId INT NOT NULL UNIQUE,

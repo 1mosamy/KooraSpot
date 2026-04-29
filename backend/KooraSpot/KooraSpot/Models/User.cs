@@ -1,4 +1,6 @@
 ﻿
+using Microsoft.Extensions.Primitives;
+
 namespace KooraSpot.Models
 {
     public class User
@@ -10,8 +12,9 @@ namespace KooraSpot.Models
        public string Role { get; set; } = ""; 
 
          // Profile information
-       public string? PhoneNumber { get; set; }
-       
+         public string? ProfileImageUrl { get; set; } 
+        public string? PhoneNumber { get; set; }
+        public string? City { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.Now;
     }
 }

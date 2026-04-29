@@ -7,7 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-
+using Microsoft.AspNetCore.Authorization;
 namespace KooraSpot.Controllers
 {
     [Route("api/[controller]")]
@@ -46,7 +46,8 @@ namespace KooraSpot.Controllers
                 FullName = request.FullName,
                 Email = request.Email,
                 PasswordHash = passwordHash,
-                Role = string.IsNullOrEmpty(request.Role) ? "Player" : request.Role
+                Role = string.IsNullOrEmpty(request.Role) ? "Player" : request.Role,
+                City = request.City
             };
 
             // 5. Save to database
@@ -112,6 +113,38 @@ namespace KooraSpot.Controllers
                     name = user.FullName,
                     email = user.Email,
                     role = user.Role
+                }
+            });
+        }
+
+        [Authorize]
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateProfile(UpdateProfileRequest request)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            var user = await _context.Users.FindAsync(userId);
+
+            if (user == null)
+                return NotFound("User not found");
+
+            user.FullName = request.FullName;
+            user.PhoneNumber = request.PhoneNumber;
+            user.City = request.City;
+            user.ProfileImageUrl = request.ProfileImageUrl;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "Profile updated successfully",
+                user = new
+                {
+                    id = user.Id,
+                    fullName = user.FullName,
+                    phoneNumber = user.PhoneNumber,
+                    city = user.City,
+                    profileImageUrl = user.ProfileImageUrl
                 }
             });
         }
