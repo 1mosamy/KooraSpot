@@ -148,5 +148,49 @@ namespace KooraSpot.Controllers
                 }
             });
         }
+
+        [DisableRequestSizeLimit]
+        [RequestFormLimits(MultipartHeadersLengthLimit = 65536)]
+        [Authorize]
+        [HttpPost("upload-profile-image")]
+        public async Task<IActionResult> UploadProfileImage(IFormFile image)
+        {
+            if (image == null || image.Length == 0)
+                return BadRequest("No image uploaded");
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+            if (!allowedExtensions.Contains(Path.GetExtension(image.FileName).ToLower()))
+                return BadRequest("Invalid file type");
+
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            var user = await _context.Users.FindAsync(userId);
+
+            if (user == null)
+                return NotFound("User not found");
+
+            var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "users");
+
+            if (!Directory.Exists(folderPath))
+                Directory.CreateDirectory(folderPath);
+
+            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(image.FileName)}";
+            var filePath = Path.Combine(folderPath, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await image.CopyToAsync(stream);
+            }
+
+            var imageUrl = $"/images/users/{fileName}";
+
+            user.ProfileImageUrl = imageUrl;
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                imageUrl = imageUrl
+            });
+        }
     }
 }
