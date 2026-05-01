@@ -249,5 +249,29 @@ namespace KooraSpot.Controllers
 
             return Ok(fields);
         }
+
+        [Authorize(Roles = "Owner")]
+        [HttpPut("{id}/toggle-active")]
+        public async Task<IActionResult> ToggleFieldActive(int id)
+        {
+            var ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            var field = await _context.Fields
+                .FirstOrDefaultAsync(f => f.Id == id && f.OwnerId == ownerId);
+
+            if (field == null)
+                return NotFound("Field not found or you are not the owner");
+
+            field.IsActive = !field.IsActive;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = field.IsActive ? "Field activated" : "Field deactivated",
+                field.Id,
+                field.IsActive
+            });
+        }
     }
 }
