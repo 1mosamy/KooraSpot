@@ -46,6 +46,19 @@ CREATE TABLE TimeSlots (
     CONSTRAINT FK_TimeSlots_Fields
         FOREIGN KEY (FieldId) REFERENCES Fields(Id)
 );
+CREATE TABLE FieldSlotAvailabilities (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    FieldId INT NOT NULL,
+    Date DATE NOT NULL,
+    SlotTime NVARCHAR(20) NOT NULL,
+    IsActive BIT NOT NULL DEFAULT 1,
+
+    CONSTRAINT FK_FieldSlotAvailabilities_Fields
+        FOREIGN KEY (FieldId) REFERENCES Fields(Id),
+
+    CONSTRAINT UQ_FieldSlotAvailabilities_Field_Date_Slot
+        UNIQUE (FieldId, Date, SlotTime)
+);
 
 CREATE TABLE Bookings (
     Id INT IDENTITY(1,1) PRIMARY KEY,
@@ -79,6 +92,7 @@ CREATE TABLE FavoriteFields (
     CONSTRAINT UQ_FavoriteFields_User_Field
         UNIQUE (UserId, FieldId)
 );
+
 CREATE TABLE Payments (
     Id INT IDENTITY(1,1) PRIMARY KEY,
     BookingId INT NOT NULL UNIQUE,
