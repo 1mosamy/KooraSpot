@@ -1,13 +1,14 @@
 ﻿using KooraSpot.Data;
 using KooraSpot.DTOs;
 using KooraSpot.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Buffers.Text;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.AspNetCore.Authorization;
 namespace KooraSpot.Controllers
 {
     [Route("api/[controller]")]
@@ -16,6 +17,7 @@ namespace KooraSpot.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IConfiguration _configuration;
+        private string baseUrl;
 
         public UsersController(AppDbContext context, IConfiguration configuration)
         {
@@ -112,7 +114,17 @@ namespace KooraSpot.Controllers
                     id = user.Id,
                     name = user.FullName,
                     email = user.Email,
-                    role = user.Role
+                    city = user.City,
+                    phonenumber = user.PhoneNumber,
+                    role = user.Role,
+
+                      profileImageUrl = string.IsNullOrEmpty(user.ProfileImageUrl)
+                        ? null
+                        : baseUrl + user.ProfileImageUrl,
+
+                    firstLetter = string.IsNullOrEmpty(user.FullName)
+                        ? null
+                        : user.FullName.Substring(0, 1).ToUpper()
                 }
             });
         }
