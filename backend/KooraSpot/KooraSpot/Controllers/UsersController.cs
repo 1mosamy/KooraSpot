@@ -5,10 +5,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using System.Buffers.Text;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+
 namespace KooraSpot.Controllers
 {
     [Route("api/[controller]")]
@@ -17,7 +17,6 @@ namespace KooraSpot.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IConfiguration _configuration;
-        private string baseUrl;
 
         public UsersController(AppDbContext context, IConfiguration configuration)
         {
@@ -28,31 +27,27 @@ namespace KooraSpot.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterRequest request)
         {
-            // 1. Check if passwords match
             if (request.Password != request.ConfirmPassword)
                 return BadRequest("Passwords do not match");
 
-            // 2. Check if email already exists
             var existingUser = await _context.Users
                 .FirstOrDefaultAsync(u => u.Email == request.Email);
 
             if (existingUser != null)
                 return BadRequest("Email already exists");
 
-            // 3. Hash the password
             string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
-            // 4. Create new user
             var user = new User
             {
                 FullName = request.FullName,
                 Email = request.Email,
                 PasswordHash = passwordHash,
                 Role = string.IsNullOrEmpty(request.Role) ? "Player" : request.Role,
-                City = request.City
+                City = request.City,
+                CreatedAt = DateTime.Now
             };
 
-            // 5. Save to database
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
@@ -62,20 +57,17 @@ namespace KooraSpot.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginRequest request)
         {
-            // 1. Find user by email
             var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.Email == request.Email);
 
             if (user == null)
                 return BadRequest("Invalid email or password");
 
-            // 2. Verify password
             bool isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
 
             if (!isPasswordValid)
                 return BadRequest("Invalid email or password");
 
-            // 3. Create JWT token
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
@@ -93,35 +85,35 @@ namespace KooraSpot.Controllers
                 SecurityAlgorithms.HmacSha256
             );
 
+            var durationInMinutes = double.Parse(_configuration["Jwt:DurationInMinutes"]!);
+
             var token = new JwtSecurityToken(
                 issuer: _configuration["Jwt:Issuer"],
                 audience: _configuration["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(
-                    double.Parse(_configuration["Jwt:DurationInMinutes"]!)
-                ),
+                expires: DateTime.Now.AddMinutes(durationInMinutes),
                 signingCredentials: credentials
             );
 
             var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
 
-            
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+
             return Ok(new
             {
                 token = tokenString,
+                expiresIn = (int)(durationInMinutes * 60),
                 user = new
                 {
                     id = user.Id,
                     name = user.FullName,
                     email = user.Email,
                     city = user.City,
-                    phonenumber = user.PhoneNumber,
+                    phoneNumber = user.PhoneNumber,
                     role = user.Role,
-
-                      profileImageUrl = string.IsNullOrEmpty(user.ProfileImageUrl)
+                    profileImageUrl = string.IsNullOrEmpty(user.ProfileImageUrl)
                         ? null
                         : baseUrl + user.ProfileImageUrl,
-
                     firstLetter = string.IsNullOrEmpty(user.FullName)
                         ? null
                         : user.FullName.Substring(0, 1).ToUpper()
@@ -143,9 +135,15 @@ namespace KooraSpot.Controllers
             user.FullName = request.FullName;
             user.PhoneNumber = request.PhoneNumber;
             user.City = request.City;
-            user.ProfileImageUrl = request.ProfileImageUrl;
+
+            if (!string.IsNullOrEmpty(request.ProfileImageUrl))
+            {
+                user.ProfileImageUrl = request.ProfileImageUrl;
+            }
 
             await _context.SaveChangesAsync();
+
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
 
             return Ok(new
             {
@@ -156,7 +154,12 @@ namespace KooraSpot.Controllers
                     fullName = user.FullName,
                     phoneNumber = user.PhoneNumber,
                     city = user.City,
-                    profileImageUrl = user.ProfileImageUrl
+                    profileImageUrl = string.IsNullOrEmpty(user.ProfileImageUrl)
+                        ? null
+                        : baseUrl + user.ProfileImageUrl,
+                    firstLetter = string.IsNullOrEmpty(user.FullName)
+                        ? null
+                        : user.FullName.Substring(0, 1).ToUpper()
                 }
             });
         }
@@ -171,7 +174,9 @@ namespace KooraSpot.Controllers
                 return BadRequest("No image uploaded");
 
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
-            if (!allowedExtensions.Contains(Path.GetExtension(image.FileName).ToLower()))
+            var extension = Path.GetExtension(image.FileName).ToLower();
+
+            if (!allowedExtensions.Contains(extension))
                 return BadRequest("Invalid file type");
 
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
@@ -181,12 +186,17 @@ namespace KooraSpot.Controllers
             if (user == null)
                 return NotFound("User not found");
 
-            var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "users");
+            var folderPath = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                "wwwroot",
+                "images",
+                "users"
+            );
 
             if (!Directory.Exists(folderPath))
                 Directory.CreateDirectory(folderPath);
 
-            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(image.FileName)}";
+            var fileName = $"{Guid.NewGuid()}{extension}";
             var filePath = Path.Combine(folderPath, fileName);
 
             using (var stream = new FileStream(filePath, FileMode.Create))
@@ -199,9 +209,11 @@ namespace KooraSpot.Controllers
             user.ProfileImageUrl = imageUrl;
             await _context.SaveChangesAsync();
 
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+
             return Ok(new
             {
-                imageUrl = imageUrl
+                imageUrl = baseUrl + imageUrl
             });
         }
     }

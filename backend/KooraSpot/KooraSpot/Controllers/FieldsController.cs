@@ -101,6 +101,10 @@ namespace KooraSpot.Controllers
             _context.Fields.Add(field);
             await _context.SaveChangesAsync();
 
+            var defaultSlots = GenerateDefaultSlots(field.Id);
+            _context.TimeSlots.AddRange(defaultSlots);
+            await _context.SaveChangesAsync();
+
             var uploadedImages = new List<object>();
             var baseUrl = $"{Request.Scheme}://{Request.Host}";
 
@@ -175,13 +179,34 @@ namespace KooraSpot.Controllers
             });
         }
 
+        private List<TimeSlot> GenerateDefaultSlots(int fieldId)
+        {
+            var slots = new List<TimeSlot>();
+
+            for (int hour = 6; hour < 24; hour++)
+            {
+                var start = DateTime.Today.AddHours(hour);
+                var end = DateTime.Today.AddHours(hour + 1);
+
+                slots.Add(new TimeSlot
+                {
+                    FieldId = fieldId,
+                    SlotTime = $"{start:hh:mm tt} - {end:hh:mm tt}",
+                    IsActive = true
+                });
+            }
+
+            return slots;
+        }
+
         [Authorize(Roles = "Owner")]
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateField(int id, [FromForm] Field request)
+        public async Task<IActionResult> UpdateField(int id, [FromForm] CreateFieldRequest request)
         {
             var ownerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
             var field = await _context.Fields
+                .Include(f => f.Images)
                 .FirstOrDefaultAsync(f => f.Id == id && f.OwnerId == ownerId && f.IsActive);
 
             if (field == null)
@@ -193,15 +218,72 @@ namespace KooraSpot.Controllers
             field.PricePerHour = request.PricePerHour;
             field.Description = request.Description;
 
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+
+            if (request.Images != null && request.Images.Count > 0)
+            {
+                var folderPath = Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    "wwwroot",
+                    "images",
+                    "fields"
+                );
+
+                if (!Directory.Exists(folderPath))
+                    Directory.CreateDirectory(folderPath);
+
+                foreach (var image in request.Images)
+                {
+                    if (image.Length == 0)
+                        continue;
+
+                    var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+                    var extension = Path.GetExtension(image.FileName).ToLower();
+
+                    if (!allowedExtensions.Contains(extension))
+                        return BadRequest("Invalid image type");
+
+                    var fileName = $"{Guid.NewGuid()}{extension}";
+                    var filePath = Path.Combine(folderPath, fileName);
+
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await image.CopyToAsync(stream);
+                    }
+
+                    var imageUrl = $"/images/fields/{fileName}";
+
+                    _context.FieldImages.Add(new FieldImage
+                    {
+                        FieldId = field.Id,
+                        ImageUrl = imageUrl,
+                        IsMain = !field.Images.Any()
+                    });
+                }
+            }
+
             await _context.SaveChangesAsync();
 
             return Ok(new
             {
                 message = "Field updated successfully",
-                field
+                field = new
+                {
+                    field.Id,
+                    field.Name,
+                    field.Address,
+                    field.City,
+                    field.PricePerHour,
+                    field.Description,
+                    images = field.Images.Select(i => new
+                    {
+                        i.Id,
+                        imageUrl = baseUrl + i.ImageUrl,
+                        i.IsMain
+                    }).ToList()
+                }
             });
         }
-
         [Authorize(Roles = "Owner")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteField(int id)

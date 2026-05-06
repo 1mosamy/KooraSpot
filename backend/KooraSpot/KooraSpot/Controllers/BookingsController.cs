@@ -20,7 +20,6 @@ namespace KooraSpot.Controllers
             _context = context;
         }
 
-      
         private async Task CancelExpiredBookings()
         {
             var expiredBookings = await _context.Bookings
@@ -41,12 +40,12 @@ namespace KooraSpot.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateBooking(CreateBookingRequest request)
         {
-            
             await CancelExpiredBookings();
 
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
             var field = await _context.Fields.FindAsync(request.FieldId);
+
             if (field == null)
                 return NotFound("Field not found");
 
@@ -98,7 +97,7 @@ namespace KooraSpot.Controllers
                     DayName = dayName,
                     SlotTime = slot,
                     TotalPrice = field.PricePerHour,
-                    Status = "Pending", 
+                    Status = "Pending",
                     CreatedAt = DateTime.Now
                 });
             }
@@ -126,23 +125,33 @@ namespace KooraSpot.Controllers
             var bookings = await _context.Bookings
                 .Where(b => b.PlayerId == userId)
                 .Include(b => b.Field)
+                .ThenInclude(f => f.Images)
+                .OrderByDescending(b => b.BookingDate)
                 .Select(b => new
                 {
                     b.Id,
+
                     fieldId = b.FieldId,
                     fieldName = b.Field.Name,
-                    b.SlotTime,
+                    fieldCity = b.Field.City,
+                    fieldAddress = b.Field.Address,
+
+                    fieldImage = b.Field.Images
+                        .Where(i => i.IsMain)
+                        .Select(i => i.ImageUrl)
+                        .FirstOrDefault(),
+
+                    slotTime = b.SlotTime,
                     bookingDate = b.BookingDate.ToString("yyyy-MM-dd"),
-                    b.DayName,
-                    b.TotalPrice,
-                    b.Status
+                    dayName = b.DayName,
+                    totalPrice = b.TotalPrice,
+                    status = b.Status
                 })
                 .ToListAsync();
 
             return Ok(bookings);
         }
 
-       
         [Authorize(Roles = "Owner")]
         [HttpGet("field/{fieldId}")]
         public async Task<IActionResult> GetFieldBookings(int fieldId)
@@ -160,16 +169,31 @@ namespace KooraSpot.Controllers
             var bookings = await _context.Bookings
                 .Where(b => b.FieldId == fieldId)
                 .Include(b => b.Player)
+                .Include(b => b.Field)
+                .ThenInclude(f => f.Images)
+                .OrderByDescending(b => b.BookingDate)
                 .Select(b => new
                 {
                     b.Id,
+
                     playerName = b.Player.FullName,
                     playerId = b.PlayerId,
-                    b.SlotTime,
+
+                    fieldId = b.FieldId,
+                    fieldName = b.Field.Name,
+                    fieldCity = b.Field.City,
+                    fieldAddress = b.Field.Address,
+
+                    fieldImage = b.Field.Images
+                        .Where(i => i.IsMain)
+                        .Select(i => i.ImageUrl)
+                        .FirstOrDefault(),
+
+                    slotTime = b.SlotTime,
                     bookingDate = b.BookingDate.ToString("yyyy-MM-dd"),
-                    b.DayName,
-                    b.TotalPrice,
-                    b.Status
+                    dayName = b.DayName,
+                    totalPrice = b.TotalPrice,
+                    status = b.Status
                 })
                 .ToListAsync();
 

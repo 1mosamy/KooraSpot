@@ -17,6 +17,7 @@ namespace KooraSpot.Data
         public DbSet<FieldImage> FieldImages { get; set; }
         public DbSet<TimeSlot> TimeSlots { get; set; }
         public DbSet<FieldSlotAvailability> FieldSlotAvailabilities { get; set; }
+        public DbSet<FavoriteField> FavoriteFields { get; set; }
         public DbSet<Booking> Bookings { get; set; }
         //public DbSet<Payment> Payments { get; set; }
 
@@ -27,6 +28,22 @@ namespace KooraSpot.Data
             modelBuilder.Entity<FieldSlotAvailability>()
                 .HasIndex(x => new { x.FieldId, x.Date, x.SlotTime })
                 .IsUnique();
+
+            modelBuilder.Entity<FavoriteField>()
+        .HasIndex(f => new { f.UserId, f.FieldId })
+        .IsUnique();
+
+            modelBuilder.Entity<FavoriteField>()
+                .HasOne(f => f.User)
+                .WithMany()
+                .HasForeignKey(f => f.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<FavoriteField>()
+                .HasOne(f => f.Field)
+                .WithMany()
+                .HasForeignKey(f => f.FieldId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
 
     }
