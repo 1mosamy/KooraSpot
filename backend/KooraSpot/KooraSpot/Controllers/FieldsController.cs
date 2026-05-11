@@ -199,6 +199,8 @@ namespace KooraSpot.Controllers
             return slots;
         }
 
+      
+
         [Authorize(Roles = "Owner")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateField(int id, [FromForm] CreateFieldRequest request)
@@ -284,6 +286,7 @@ namespace KooraSpot.Controllers
                 }
             });
         }
+
         [Authorize(Roles = "Owner")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteField(int id)
@@ -310,7 +313,7 @@ namespace KooraSpot.Controllers
             var baseUrl = $"{Request.Scheme}://{Request.Host}";
 
             var fields = await _context.Fields
-                .Where(f => f.OwnerId == ownerId && f.IsActive)
+                .Where(f => f.OwnerId == ownerId )
                 .Include(f => f.Images)
                 .Select(f => new
                 {
@@ -320,6 +323,7 @@ namespace KooraSpot.Controllers
                     f.City,
                     f.PricePerHour,
                     f.Description,
+                    f.IsActive,
                     Images = f.Images.Select(i => new
                     {
                         i.Id,

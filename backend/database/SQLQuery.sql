@@ -1,15 +1,30 @@
 USE KooraSpotDb;
 GO
+
 CREATE TABLE Users (
     Id INT IDENTITY(1,1) PRIMARY KEY,
     FullName NVARCHAR(100) NOT NULL,
     PhoneNumber NVARCHAR(20) NULL,
     Email NVARCHAR(100) NOT NULL UNIQUE,
     PasswordHash NVARCHAR(MAX) NOT NULL,
-    Role NVARCHAR(20) NOT NULL, 
-    City NVARCHAR(100) NULL, 
+    Role NVARCHAR(20) NOT NULL,
+    City NVARCHAR(100) NULL,
     ProfileImageUrl NVARCHAR(MAX) NULL,
+    IsEmailVerified BIT NOT NULL DEFAULT 0,
     CreatedAt DATETIME2 DEFAULT GETDATE()
+);
+
+CREATE TABLE PasswordResetOtps (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    UserId INT NOT NULL,
+    OtpCode NVARCHAR(10) NOT NULL,
+    ExpiresAt DATETIME NOT NULL,
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+
+    CONSTRAINT FK_PasswordResetOtps_Users
+        FOREIGN KEY (UserId)
+        REFERENCES Users(Id)
+        ON DELETE CASCADE
 );
 
 CREATE TABLE Fields (
@@ -20,11 +35,12 @@ CREATE TABLE Fields (
     City NVARCHAR(100) NULL,
     PricePerHour DECIMAL(10,2) NOT NULL,
     Description NVARCHAR(MAX) NULL,
-    IsActive BIT DEFAULT 1,
+    IsActive BIT NOT NULL DEFAULT 1,
     CreatedAt DATETIME2 DEFAULT GETDATE(),
 
     CONSTRAINT FK_Fields_Users
-        FOREIGN KEY (OwnerId) REFERENCES Users(Id)
+        FOREIGN KEY (OwnerId)
+        REFERENCES Users(Id)
 );
 
 CREATE TABLE FieldImages (
@@ -34,7 +50,8 @@ CREATE TABLE FieldImages (
     IsMain BIT DEFAULT 0,
 
     CONSTRAINT FK_FieldImages_Fields
-        FOREIGN KEY (FieldId) REFERENCES Fields(Id)
+        FOREIGN KEY (FieldId)
+        REFERENCES Fields(Id)
 );
 
 CREATE TABLE TimeSlots (
@@ -44,8 +61,10 @@ CREATE TABLE TimeSlots (
     IsActive BIT DEFAULT 1,
 
     CONSTRAINT FK_TimeSlots_Fields
-        FOREIGN KEY (FieldId) REFERENCES Fields(Id)
+        FOREIGN KEY (FieldId)
+        REFERENCES Fields(Id)
 );
+
 CREATE TABLE FieldSlotAvailabilities (
     Id INT IDENTITY(1,1) PRIMARY KEY,
     FieldId INT NOT NULL,
@@ -54,7 +73,8 @@ CREATE TABLE FieldSlotAvailabilities (
     IsActive BIT NOT NULL DEFAULT 1,
 
     CONSTRAINT FK_FieldSlotAvailabilities_Fields
-        FOREIGN KEY (FieldId) REFERENCES Fields(Id),
+        FOREIGN KEY (FieldId)
+        REFERENCES Fields(Id),
 
     CONSTRAINT UQ_FieldSlotAvailabilities_Field_Date_Slot
         UNIQUE (FieldId, Date, SlotTime)
@@ -65,18 +85,21 @@ CREATE TABLE Bookings (
     PlayerId INT NOT NULL,
     FieldId INT NOT NULL,
     BookingDate DATE NOT NULL,
-    DayName NVARCHAR(20) NOT NULL, 
-    SlotTime NVARCHAR(20) NOT NULL, 
+    DayName NVARCHAR(20) NOT NULL,
+    SlotTime NVARCHAR(20) NOT NULL,
     TotalPrice DECIMAL(10,2) NOT NULL,
     Status NVARCHAR(30) DEFAULT 'Pending',
     CreatedAt DATETIME2 DEFAULT GETDATE(),
 
     CONSTRAINT FK_Bookings_Users
-        FOREIGN KEY (PlayerId) REFERENCES Users(Id),
+        FOREIGN KEY (PlayerId)
+        REFERENCES Users(Id),
 
     CONSTRAINT FK_Bookings_Fields
-        FOREIGN KEY (FieldId) REFERENCES Fields(Id)
+        FOREIGN KEY (FieldId)
+        REFERENCES Fields(Id)
 );
+
 CREATE TABLE FavoriteFields (
     Id INT IDENTITY(1,1) PRIMARY KEY,
     UserId INT NOT NULL,
@@ -84,10 +107,12 @@ CREATE TABLE FavoriteFields (
     CreatedAt DATETIME2 DEFAULT GETDATE(),
 
     CONSTRAINT FK_FavoriteFields_Users
-        FOREIGN KEY (UserId) REFERENCES Users(Id),
+        FOREIGN KEY (UserId)
+        REFERENCES Users(Id),
 
     CONSTRAINT FK_FavoriteFields_Fields
-        FOREIGN KEY (FieldId) REFERENCES Fields(Id),
+        FOREIGN KEY (FieldId)
+        REFERENCES Fields(Id),
 
     CONSTRAINT UQ_FavoriteFields_User_Field
         UNIQUE (UserId, FieldId)
@@ -99,9 +124,23 @@ CREATE TABLE Payments (
     Amount DECIMAL(10,2) NOT NULL,
     PaymentMethod NVARCHAR(50) NOT NULL,
     Status NVARCHAR(30) DEFAULT 'Pending',
+    StripeSessionId NVARCHAR(255) NULL,
     PaidAt DATETIME2 NULL,
 
     CONSTRAINT FK_Payments_Bookings
-        FOREIGN KEY (BookingId) REFERENCES Bookings(Id)
+        FOREIGN KEY (BookingId)
+        REFERENCES Bookings(Id)
 );
 
+CREATE TABLE Withdrawals (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    OwnerId INT NOT NULL,
+    Amount DECIMAL(10,2) NOT NULL,
+    WalletNumber NVARCHAR(20) NOT NULL,
+    Status NVARCHAR(30) NOT NULL DEFAULT 'Completed',
+    CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+
+    CONSTRAINT FK_Withdrawals_Users
+        FOREIGN KEY (OwnerId)
+        REFERENCES Users(Id)
+);
