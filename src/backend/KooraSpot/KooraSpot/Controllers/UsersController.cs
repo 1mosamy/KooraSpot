@@ -276,7 +276,7 @@ namespace KooraSpot.Controllers
 
             request.AddHeader("accept", "application/json");
 
-            request.AddHeader("api-key", "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");
+            request.AddHeader("api-key", "");
 
             request.AddHeader("content-type", "application/json");
 
