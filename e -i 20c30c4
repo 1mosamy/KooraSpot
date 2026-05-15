@@ -1,0 +1,49 @@
+[33m9f57c2d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Remove API key from history
+[33m1d82184[m .
+[33m20c30c4[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m .
+[33ma8be972[m .
+[33mceaee63[m Merge branch 'main' of https://github.com/1mosamy/KooraSpot
+[33m43769c0[m .
+[33me670812[m Delete src
+[33m4124f78[m Add new src directory
+[33m3f7c956[m .
+[33m17cd2c9[m .
+[33mbdb5fc3[m .
+[33ma1e5bf1[m .
+[33m0c53920[m .
+[33m5b376ca[m .
+[33mebcb823[m .
+[33m3f3df41[m .
+[33m33e0aa3[m .
+[33m313fafd[m .
+[33m7c9a332[m .
+[33m9baa3fa[m .
+[33m1ed0078[m Merge branch 'main' of https://github.com/1mosamy/KooraSpot
+[33m9410452[m .
+[33m9687a04[m Delete mobile directory
+[33m8af69c4[m .
+[33m61099f1[m .
+[33mdb6348d[m .
+[33mb3a8056[m .
+[33m5c58aa2[m Update ERD
+[33m2459db1[m .
+[33m28042df[m Update User.cs
+[33m01e9a23[m Update User.cs
+[33mc55febe[m Update User.cs
+[33m7f82fb7[m model user
+[33m4a9df6e[m Merge branch 'main' of https://github.com/1mosamy/KooraSpot
+[33ma87c7cd[m Create Roles.cs
+[33mf50b05b[m Clarify description in README.md
+[33md50c083[m setup backend project with models, dbcontext
+[33m89f9552[m Merge branch 'main' of https://github.com/1mosamy/KooraSpot
+[33m2e776da[m add database schema and ERD
+[33m16dab82[m Delete backend/database
+[33mce213d9[m database
+[33m665b8c4[m Update README with project details and features
+[33m63e4ee7[m add mobile folder
+[33m26cac2f[m add backend folder
+[33mba2f9c0[m Delete backend directory
+[33m6c048a6[m Create .gitkeep
+[33m39910c1[m Delete backend directory
+[33mce5aeaa[m add mobile folder
+[33m81a083b[m Initial commit
