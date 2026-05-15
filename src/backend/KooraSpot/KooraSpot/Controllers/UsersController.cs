@@ -267,16 +267,21 @@ namespace KooraSpot.Controllers
             });
         }
 
-     
-        private async Task SendOtpEmail(string toEmail, string otpCode , string subject, string messageTitle)
+        private async Task SendOtpEmail(
+    string toEmail,
+    string otpCode,
+    string subject,
+    string messageTitle)
         {
+            var apiKey = _configuration["Brevo:ApiKey"];
+
             var client = new RestClient("https://api.brevo.com/v3/smtp/email");
 
             var request = new RestRequest("", Method.Post);
 
             request.AddHeader("accept", "application/json");
 
-            request.AddHeader("api-key", "");
+            request.AddHeader("api-key", apiKey);
 
             request.AddHeader("content-type", "application/json");
 
@@ -296,11 +301,10 @@ namespace KooraSpot.Controllers
                 subject = subject,
 
                 htmlContent = $@"
-              <h2>{messageTitle}</h2>
-            <p>Your OTP code is:</p>
-            <h1>{otpCode}</h1>
-            <p>This code will expire in 5 minutes.</p>
-
+        <h2>{messageTitle}</h2>
+        <p>Your OTP code is:</p>
+        <h1>{otpCode}</h1>
+        <p>This code will expire in 5 minutes.</p>
         "
             };
 
@@ -315,6 +319,7 @@ namespace KooraSpot.Controllers
                 );
             }
         }
+
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
         {
