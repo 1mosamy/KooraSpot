@@ -20,11 +20,36 @@ namespace KooraSpot.Controllers
             _context = context;
         }
 
+        private async Task CancelExpiredBookings()
+        {
+            var expiredBookings = await _context.Bookings
+                .Where(b =>
+                    b.Status == "Pending" &&
+                    b.CreatedAt < DateTime.Now.AddMinutes(-10))
+                .ToListAsync();
+
+            foreach (var booking in expiredBookings)
+            {
+                booking.Status = "Cancelled";
+
+                var payment = await _context.Payments
+                    .FirstOrDefaultAsync(p => p.BookingId == booking.Id);
+
+                if (payment != null)
+                {
+                    payment.Status = "Cancelled";
+                }
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
         // GET: api/Fields/1/slots?date=2026-04-12
         [Authorize(Roles = "Owner,Player")]
         [HttpGet]
         public async Task<IActionResult> GetSlots(int fieldId, [FromQuery] DateTime date)
         {
+            await CancelExpiredBookings();
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
 
@@ -50,12 +75,18 @@ namespace KooraSpot.Controllers
                 .ToListAsync();
 
             var bookings = await _context.Bookings
-                .Include(b => b.Player)
-                .Where(b =>
-                    b.FieldId == fieldId &&
-                    b.BookingDate == date.Date &&
-                    b.Status != "Cancelled")
-                .ToListAsync();
+       .Include(b => b.Player)
+       .Where(b =>
+           b.FieldId == fieldId &&
+           b.BookingDate == date.Date &&
+           (
+               b.Status == "Confirmed" ||
+               (
+                   b.Status == "Pending" &&
+                   b.CreatedAt > DateTime.Now.AddMinutes(-10)
+               )
+           ))
+       .ToListAsync();
 
             var result = baseSlots.Select(slot =>
             {

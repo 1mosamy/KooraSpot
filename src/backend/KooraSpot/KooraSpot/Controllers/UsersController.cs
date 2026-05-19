@@ -12,6 +12,7 @@ using System.Net;
 using System.Net.Mail;
 using System.Security.Claims;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace KooraSpot.Controllers
 {
@@ -28,24 +29,49 @@ namespace KooraSpot.Controllers
             _configuration = configuration;
         }
 
-        [HttpPost("register")]
+
+          [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterRequest request)
         {
+            
+
             if (request.Password != request.ConfirmPassword)
                 return BadRequest("Passwords do not match");
 
             var existingUser = await _context.Users
                 .FirstOrDefaultAsync(u => u.Email == request.Email);
 
+            //if (existingUser != null )
+            //    return BadRequest("Email already exists");
+
             if (existingUser != null)
-                return BadRequest("Email already exists");
+            {
+                if (existingUser.IsEmailVerified)
+                    return BadRequest("Email already exists");
+
+                var existingOtp = await _context.PasswordResetOtps
+                    .FirstOrDefaultAsync(o => o.UserId == existingUser.Id);
+
+                if (existingOtp != null && existingOtp.ExpiresAt > DateTime.Now)
+                    return BadRequest("Email already exists.");
+
+                var oldOtps = await _context.PasswordResetOtps
+                    .Where(o => o.UserId == existingUser.Id)
+                    .ToListAsync();
+
+                _context.PasswordResetOtps.RemoveRange(oldOtps);
+                _context.Users.Remove(existingUser);
+                await _context.SaveChangesAsync();
+            }
+
 
             string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
             var user = new User
             {
-                FullName = request.FullName,
+                FullName = Regex.Replace(request.FullName.Trim(), @"\s+", " "),
                 Email = request.Email,
+                PhoneNumber = request.PhoneNumber,
                 PasswordHash = passwordHash,
                 Role = string.IsNullOrEmpty(request.Role) ? "Player" : request.Role,
                 City = request.City,
@@ -53,35 +79,51 @@ namespace KooraSpot.Controllers
                 IsEmailVerified = false
             };
 
-            _context.Users.Add(user);
-
+            await _context.Users.AddAsync(user);
             await _context.SaveChangesAsync();
 
             var otpCode = new Random()
                 .Next(100000, 999999)
                 .ToString();
 
-            var otp = new PasswordResetOtp
+            try
             {
-                UserId = user.Id,
-                OtpCode = otpCode,
-                ExpiresAt = DateTime.Now.AddMinutes(5)
-            };
+                await SendOtpEmail(
+                    user.Email,
+                    otpCode,
+                    "KooraSpot Email Verification",
+                    "Verify Your Email"
+                );
 
-            _context.PasswordResetOtps.Add(otp);
+                var otp = new PasswordResetOtp
+                {
+                    UserId = user.Id,
+                    OtpCode = otpCode,
+                    ExpiresAt = DateTime.Now.AddMinutes(5),
+                    CreatedAt = DateTime.Now
+                };
 
-            await _context.SaveChangesAsync();
+                _context.PasswordResetOtps.Add(otp);
+                await _context.SaveChangesAsync();
 
-            await SendOtpEmail(user.Email, otpCode, "KooraSpot Email Verification",
-    "Verify Your Email");
-
-            return Ok(new
+                return Ok(new
+                {
+                    message = "OTP sent successfully. Please verify your email."
+                });
+            }
+            catch
             {
-                message = "OTP sent successfully. Please verify your email."
-            });
+                _context.Users.Remove(user);
+                await _context.SaveChangesAsync();
+
+                return StatusCode(500, new
+                {
+                    message = "Failed to send OTP email. Please try again later."
+                });
+            }
         }
 
-        [HttpPost("login")]
+            [HttpPost("login")]
         public async Task<IActionResult> Login(LoginRequest request)
         {
             var user = await _context.Users
@@ -182,7 +224,7 @@ namespace KooraSpot.Controllers
             if (user == null)
                 return NotFound("User not found");
 
-            user.FullName = request.FullName;
+            user.FullName = Regex.Replace(request.FullName.Trim(), @"\s+", " ");
             user.PhoneNumber = request.PhoneNumber;
             user.City = request.City;
 

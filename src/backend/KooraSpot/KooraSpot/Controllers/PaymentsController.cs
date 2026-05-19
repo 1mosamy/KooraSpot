@@ -27,6 +27,7 @@ namespace KooraSpot.Controllers
         [HttpPost("create-checkout-session")]
         public async Task<IActionResult> CreateCheckoutSession(CreateCheckoutSessionRequest request)
         {
+            await CancelExpiredBookings();
             var playerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
             if (request.BookingIds == null || !request.BookingIds.Any())
@@ -49,7 +50,7 @@ namespace KooraSpot.Controllers
                 return BadRequest(new { message = "All bookings must be for the same field" });
 
             var totalAmount = bookings.Sum(b => b.TotalPrice);
-
+            var expiresAt = DateTime.UtcNow.AddMinutes(30);
             var options = new SessionCreateOptions
             {
                 Mode = "payment",
@@ -78,7 +79,7 @@ namespace KooraSpot.Controllers
 
                 SuccessUrl = StripeSettings.SuccessUrl + "?session_id={CHECKOUT_SESSION_ID}",
                 CancelUrl = StripeSettings.CancelUrl,
-
+                ExpiresAt = expiresAt,
                 Metadata = new Dictionary<string, string>
                 {
                     { "bookingIds", string.Join(",", request.BookingIds) },
@@ -116,6 +117,8 @@ namespace KooraSpot.Controllers
                 }
             }
 
+
+
             await _context.SaveChangesAsync();
 
             return Ok(new
@@ -125,6 +128,35 @@ namespace KooraSpot.Controllers
                 totalAmount
             });
         }
+
+
+        private async Task CancelExpiredBookings()
+        {
+            var expireTime = DateTime.Now.AddMinutes(-30);
+
+            var expiredBookings = await _context.Bookings
+                .Where(b =>
+                    b.Status == "Pending" &&
+                    b.CreatedAt < expireTime)
+                .ToListAsync();
+
+            foreach (var booking in expiredBookings)
+            {
+                booking.Status = "Cancelled";
+
+                var payment = await _context.Payments
+                    .FirstOrDefaultAsync(p => p.BookingId == booking.Id);
+
+                if (payment != null && payment.Status == "Pending")
+                {
+                    payment.Status = "Cancelled";
+                }
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+
 
         [HttpPost("stripe-webhook")]
         public async Task<IActionResult> StripeWebhook()
@@ -150,22 +182,32 @@ namespace KooraSpot.Controllers
             {
                 var session = stripeEvent.Data.Object as Session;
 
-                if (session == null)
-                    return BadRequest();
+                var bookingIds = session.Metadata["bookingIds"]
+                    .Split(",")
+                    .Select(int.Parse)
+                    .ToList();
 
-                var payments = await _context.Payments
-                    .Include(p => p.Booking)
-                    .Where(p =>
-                        p.StripeSessionId == session.Id &&
-                        p.Status == "Pending")
+                var bookings = await _context.Bookings
+                    .Where(b => bookingIds.Contains(b.Id))
                     .ToListAsync();
 
-                foreach (var payment in payments)
+                foreach (var booking in bookings)
                 {
-                    payment.Status = "Paid";
-                    payment.PaidAt = DateTime.Now;
+                    if (booking.Status == "Cancelled")
+                        continue;
 
-                    payment.Booking.Status = "Confirmed";
+                    booking.Status = "Confirmed";
+
+                    var payment = await _context.Payments
+                        .FirstOrDefaultAsync(p =>
+                            p.BookingId == booking.Id &&
+                            p.StripeSessionId == session.Id);
+
+                    if (payment != null)
+                    {
+                        payment.Status = "Paid";
+                        payment.PaidAt = DateTime.Now;
+                    }
                 }
 
                 await _context.SaveChangesAsync();
