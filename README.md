@@ -296,8 +296,6 @@ Example `appsettings.json`:
 }
 ```
 
-> [!WARNING]
-> Do not upload real API keys or secrets to GitHub.
 
 ---
 
